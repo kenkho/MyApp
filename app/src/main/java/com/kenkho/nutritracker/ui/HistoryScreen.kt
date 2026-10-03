@@ -57,7 +57,7 @@ fun HistoryScreen(vm: DiaryViewModel, onBack: () -> Unit, onOpenDay: (LocalDate)
                     Column(Modifier.padding(12.dp)) {
                         Text(day.date.format(longDateFormatter), style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "${day.entryCount} ${if (day.entryCount == 1) "entry" else "entries"}",
+                            "${day.mealCount} ${if (day.mealCount == 1) "meal" else "meals"}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

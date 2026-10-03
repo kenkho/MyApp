@@ -11,8 +11,8 @@ import androidx.navigation.navArgument
 
 private const val DIARY = "diary"
 private const val HISTORY = "history"
-private const val EDIT = "edit?${EditEntryViewModel.ARG_ID}={${EditEntryViewModel.ARG_ID}}" +
-    "&${EditEntryViewModel.ARG_DATE}={${EditEntryViewModel.ARG_DATE}}"
+private const val EDIT = "edit?${EditMealViewModel.ARG_ID}={${EditMealViewModel.ARG_ID}}" +
+    "&${EditMealViewModel.ARG_DATE}={${EditMealViewModel.ARG_DATE}}"
 private const val SCAN = "scan"
 
 @Composable
@@ -25,8 +25,8 @@ fun NutriApp() {
         composable(DIARY) {
             DiaryScreen(
                 vm = diaryVm,
-                onAdd = { date -> nav.navigate("edit?${EditEntryViewModel.ARG_DATE}=${date.toEpochDay()}") },
-                onOpenEntry = { id -> nav.navigate("edit?${EditEntryViewModel.ARG_ID}=$id") },
+                onAdd = { date -> nav.navigate("edit?${EditMealViewModel.ARG_DATE}=${date.toEpochDay()}") },
+                onOpenMeal = { id -> nav.navigate("edit?${EditMealViewModel.ARG_ID}=$id") },
                 onOpenHistory = { nav.navigate(HISTORY) },
             )
         }
@@ -43,18 +43,18 @@ fun NutriApp() {
         composable(
             EDIT,
             arguments = listOf(
-                navArgument(EditEntryViewModel.ARG_ID) {
+                navArgument(EditMealViewModel.ARG_ID) {
                     type = NavType.LongType
-                    defaultValue = EditEntryViewModel.NO_ID
+                    defaultValue = EditMealViewModel.NO_ID
                 },
-                navArgument(EditEntryViewModel.ARG_DATE) {
+                navArgument(EditMealViewModel.ARG_DATE) {
                     type = NavType.LongType
-                    defaultValue = EditEntryViewModel.NO_DATE
+                    defaultValue = EditMealViewModel.NO_DATE
                 },
             ),
         ) {
-            val vm: EditEntryViewModel = viewModel()
-            EditEntryScreen(
+            val vm: EditMealViewModel = viewModel()
+            EditMealScreen(
                 vm = vm,
                 onClose = { nav.popBackStack() },
                 onScan = { nav.navigate(SCAN) },
@@ -63,7 +63,7 @@ fun NutriApp() {
         composable(SCAN) { backStackEntry ->
             // Scan results go straight into the form that opened the scanner.
             val editEntry = remember(backStackEntry) { nav.getBackStackEntry(EDIT) }
-            val editVm: EditEntryViewModel = viewModel(viewModelStoreOwner = editEntry)
+            val editVm: EditMealViewModel = viewModel(viewModelStoreOwner = editEntry)
             ScanScreen(
                 onBack = { nav.popBackStack() },
                 onResult = { label ->

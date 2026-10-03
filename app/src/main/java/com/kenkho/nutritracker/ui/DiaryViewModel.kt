@@ -3,7 +3,7 @@ package com.kenkho.nutritracker.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.kenkho.nutritracker.data.FoodEntry
+import com.kenkho.nutritracker.data.MealWithItems
 import com.kenkho.nutritracker.data.NutriDatabase
 import com.kenkho.nutritracker.data.NutrientTotals
 import com.kenkho.nutritracker.data.localDate
@@ -19,19 +19,19 @@ import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 import java.time.ZoneId
 
-data class DaySummary(val date: LocalDate, val entryCount: Int, val totals: NutrientTotals)
+data class DaySummary(val date: LocalDate, val mealCount: Int, val totals: NutrientTotals)
 
 class DiaryViewModel(app: Application) : AndroidViewModel(app) {
-    private val dao = NutriDatabase.get(app).foodEntryDao()
+    private val dao = NutriDatabase.get(app).mealDao()
 
     private val _selectedDate = MutableStateFlow(LocalDate.now())
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val dayEntries: StateFlow<List<FoodEntry>> = _selectedDate
+    val dayMeals: StateFlow<List<MealWithItems>> = _selectedDate
         .flatMapLatest { date ->
             val zone = ZoneId.systemDefault()
-            dao.entriesBetween(
+            dao.mealsBetween(
                 date.atStartOfDay(zone).toInstant().toEpochMilli(),
                 date.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli(),
             )
@@ -39,9 +39,9 @@ class DiaryViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Every day that has entries, newest first, with that day's totals. */
-    val history: StateFlow<List<DaySummary>> = dao.allEntries()
+    val history: StateFlow<List<DaySummary>> = dao.allMeals()
         .map { entries ->
-            entries.groupBy { it.localDate() }
+            entries.groupBy { it.entry.localDate() }
                 .map { (date, list) -> DaySummary(date, list.size, list.sumTotals()) }
                 .sortedByDescending { it.date }
         }

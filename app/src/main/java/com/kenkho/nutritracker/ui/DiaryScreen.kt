@@ -40,8 +40,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.kenkho.nutritracker.data.FoodEntry
 import com.kenkho.nutritracker.data.MealType
+import com.kenkho.nutritracker.data.MealWithItems
 import com.kenkho.nutritracker.data.localDateTime
 import com.kenkho.nutritracker.data.sumTotals
 import com.kenkho.nutritracker.data.totals
@@ -57,11 +57,11 @@ import java.time.ZoneOffset
 fun DiaryScreen(
     vm: DiaryViewModel,
     onAdd: (LocalDate) -> Unit,
-    onOpenEntry: (Long) -> Unit,
+    onOpenMeal: (Long) -> Unit,
     onOpenHistory: () -> Unit,
 ) {
     val date by vm.selectedDate.collectAsStateWithLifecycle()
-    val entries by vm.dayEntries.collectAsStateWithLifecycle()
+    val meals by vm.dayMeals.collectAsStateWithLifecycle()
     var pickDate by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(
@@ -77,7 +77,7 @@ fun DiaryScreen(
             ExtendedFloatingActionButton(
                 onClick = { onAdd(date) },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Add food") },
+                text = { Text("Add meal") },
             )
         },
     ) { padding ->
@@ -99,21 +99,21 @@ fun DiaryScreen(
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                     Column(Modifier.padding(16.dp)) {
                         Text("Day total", style = MaterialTheme.typography.titleSmall)
-                        TotalsRow(entries.sumTotals(), Modifier.padding(top = 8.dp), large = true)
+                        TotalsRow(meals.sumTotals(), Modifier.padding(top = 8.dp), large = true)
                     }
                 }
             }
-            if (entries.isEmpty()) {
+            if (meals.isEmpty()) {
                 item {
                     Text(
-                        "No entries for this day. Tap \"Add food\" to log something.",
+                        "Nothing logged for this day. Tap \"Add meal\" to log a meal or snack.",
                         Modifier.padding(vertical = 24.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
             MealType.entries.forEach { meal ->
-                val mealEntries = entries.filter { it.meal == meal }
+                val mealEntries = meals.filter { it.entry.meal == meal }
                 if (mealEntries.isNotEmpty()) {
                     item(key = "header-$meal") {
                         Column(Modifier.padding(top = 12.dp)) {
@@ -121,8 +121,8 @@ fun DiaryScreen(
                             TotalsRow(mealEntries.sumTotals(), Modifier.padding(vertical = 4.dp))
                         }
                     }
-                    items(mealEntries, key = { it.id }) { entry ->
-                        EntryCard(entry, onClick = { onOpenEntry(entry.id) })
+                    items(mealEntries, key = { it.entry.id }) { m ->
+                        MealCard(m, onClick = { onOpenMeal(m.entry.id) })
                     }
                 }
             }
@@ -184,29 +184,33 @@ private fun DateBar(
 }
 
 @Composable
-private fun EntryCard(entry: FoodEntry, onClick: () -> Unit) {
+private fun MealCard(m: MealWithItems, onClick: () -> Unit) {
     Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    entry.name,
+                    m.displayTitle,
                     Modifier.weight(1f),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    entry.localDateTime().toLocalTime().format(timeFormatter),
+                    m.entry.localDateTime().toLocalTime().format(timeFormatter),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            val serving = buildString {
-                append(entry.servings.fmt())
-                append(if (entry.servings == 1.0) " serving" else " servings")
-                if (entry.servingSize.isNotBlank()) append(" × ${entry.servingSize}")
+            m.sortedItems.forEach { item ->
+                val serving = buildString {
+                    append("• ${item.name}: ")
+                    append(item.servings.fmt())
+                    append(if (item.servings == 1.0) " serving" else " servings")
+                    if (item.servingSize.isNotBlank()) append(" × ${item.servingSize}")
+                    append(" · ${item.totals().calories.fmt()} kcal")
+                }
+                Text(serving, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(serving, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            TotalsRow(entry.totals(), Modifier.padding(top = 6.dp))
+            TotalsRow(m.totals(), Modifier.padding(top = 6.dp))
         }
     }
 }

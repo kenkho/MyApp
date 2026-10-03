@@ -1,5 +1,6 @@
 package com.kenkho.nutritracker.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,11 +16,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -40,6 +46,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -49,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kenkho.nutritracker.data.MealType
 import com.kenkho.nutritracker.dateFormatter
@@ -60,7 +68,7 @@ import java.time.ZoneOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditEntryScreen(vm: EditEntryViewModel, onClose: () -> Unit, onScan: () -> Unit) {
+fun EditMealScreen(vm: EditMealViewModel, onClose: () -> Unit, onScan: () -> Unit) {
     var pickDate by rememberSaveable { mutableStateOf(false) }
     var pickTime by rememberSaveable { mutableStateOf(false) }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
@@ -68,7 +76,7 @@ fun EditEntryScreen(vm: EditEntryViewModel, onClose: () -> Unit, onScan: () -> U
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (vm.isNew) "Add food" else "Edit food") },
+                title = { Text(if (vm.isNew) "Add meal" else "Edit meal") },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -77,7 +85,7 @@ fun EditEntryScreen(vm: EditEntryViewModel, onClose: () -> Unit, onScan: () -> U
                 actions = {
                     if (!vm.isNew) {
                         IconButton(onClick = { confirmDelete = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete entry")
+                            Icon(Icons.Default.Delete, contentDescription = "Delete meal")
                         }
                     }
                 },
@@ -97,24 +105,6 @@ fun EditEntryScreen(vm: EditEntryViewModel, onClose: () -> Unit, onScan: () -> U
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            OutlinedButton(onClick = onScan, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.Search, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Scan Nutrition Facts label")
-            }
-            vm.scanMessage?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-            }
-
-            OutlinedTextField(
-                value = vm.name,
-                onValueChange = { vm.name = it },
-                label = { Text("Food name") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                modifier = Modifier.fillMaxWidth(),
-            )
-
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { pickDate = true }, modifier = Modifier.weight(1f)) {
                     Text(vm.dateTime.toLocalDate().format(dateFormatter))
@@ -134,43 +124,46 @@ fun EditEntryScreen(vm: EditEntryViewModel, onClose: () -> Unit, onScan: () -> U
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = vm.servingSize,
-                    onValueChange = { vm.servingSize = it },
-                    label = { Text("Serving size") },
-                    placeholder = { Text("e.g. 2/3 cup (55g)") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1.6f),
-                )
-                OutlinedTextField(
-                    value = vm.servings,
-                    onValueChange = { vm.servings = it },
-                    label = { Text("Servings") },
-                    singleLine = true,
-                    isError = vm.servingsValue == null,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.weight(1f),
-                )
+            OutlinedTextField(
+                value = vm.title,
+                onValueChange = { vm.title = it },
+                label = { Text("Meal name (optional)") },
+                placeholder = { Text("e.g. Chicken salad") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                Column(Modifier.padding(12.dp)) {
+                    val count = vm.items.size
+                    Text(
+                        "Meal total · $count ${if (count == 1) "item" else "items"}",
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    TotalsRow(vm.totals, Modifier.padding(top = 8.dp), large = true)
+                }
             }
 
-            Card {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row {
-                        Text("Per serving", Modifier.weight(1.6f), style = MaterialTheme.typography.labelMedium)
-                        Text(
-                            "Total (× ${vm.servingsValue?.fmt() ?: "?"})",
-                            Modifier.weight(1f),
-                            style = MaterialTheme.typography.labelMedium,
-                            textAlign = TextAlign.End,
-                        )
-                    }
-                    val t = vm.totals
-                    NutrientRow("Calories", "kcal", vm.calories, { vm.calories = it }, t.calories)
-                    NutrientRow("Carbohydrate", "g", vm.carbs, { vm.carbs = it }, t.carbsG)
-                    NutrientRow("Sugars", "g", vm.sugar, { vm.sugar = it }, t.sugarG)
-                    NutrientRow("Sodium", "mg", vm.sodium, { vm.sodium = it }, t.sodiumMg)
+            vm.items.forEachIndexed { index, item ->
+                key(item.key) {
+                    ItemCard(
+                        item = item,
+                        number = index + 1,
+                        canRemove = vm.items.size > 1,
+                        onRemove = { vm.removeItem(item) },
+                        onScan = {
+                            vm.startScan(item)
+                            onScan()
+                        },
+                    )
                 }
+            }
+
+            OutlinedButton(onClick = vm::addItem, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Add another item")
             }
 
             OutlinedTextField(
@@ -185,7 +178,14 @@ fun EditEntryScreen(vm: EditEntryViewModel, onClose: () -> Unit, onScan: () -> U
                 onClick = { vm.save(onClose) },
                 enabled = vm.canSave,
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Save to diary") }
+            ) { Text("Save meal to diary") }
+            if (!vm.canSave) {
+                Text(
+                    "Each item needs a name and a servings amount above 0.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 
@@ -226,8 +226,8 @@ fun EditEntryScreen(vm: EditEntryViewModel, onClose: () -> Unit, onScan: () -> U
     if (confirmDelete) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("Delete entry?") },
-            text = { Text("\"${vm.name}\" will be removed from your diary.") },
+            title = { Text("Delete meal?") },
+            text = { Text("This meal and all its items will be removed from your diary.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmDelete = false
@@ -236,6 +236,108 @@ fun EditEntryScreen(vm: EditEntryViewModel, onClose: () -> Unit, onScan: () -> U
             },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
         )
+    }
+}
+
+/** One food/ingredient in the meal. Collapsed it shows a summary; expanded it shows the fields. */
+@Composable
+private fun ItemCard(
+    item: ItemDraft,
+    number: Int,
+    canRemove: Boolean,
+    onRemove: () -> Unit,
+    onScan: () -> Unit,
+) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.fillMaxWidth().clickable { item.expanded = !item.expanded },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        item.name.ifBlank { "Item $number" },
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (!item.expanded) {
+                        Text(
+                            "${item.servingsValue?.fmt() ?: "?"} × ${item.servingSize.ifBlank { "serving" }}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                if (canRemove) {
+                    IconButton(onClick = onRemove) {
+                        Icon(Icons.Default.Close, contentDescription = "Remove item")
+                    }
+                }
+                Icon(
+                    if (item.expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (item.expanded) "Collapse" else "Expand",
+                )
+            }
+
+            if (!item.expanded) {
+                TotalsRow(item.totals)
+                if (!item.isValid) {
+                    Text("Needs a name and servings", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            } else {
+                OutlinedButton(onClick = onScan, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Scan Nutrition Facts label")
+                }
+                item.scanMessage?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
+                OutlinedTextField(
+                    value = item.name,
+                    onValueChange = { item.name = it },
+                    label = { Text("Food or ingredient") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = item.servingSize,
+                        onValueChange = { item.servingSize = it },
+                        label = { Text("Serving size") },
+                        placeholder = { Text("e.g. 2/3 cup (55g)") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1.6f),
+                    )
+                    OutlinedTextField(
+                        value = item.servings,
+                        onValueChange = { item.servings = it },
+                        label = { Text("Servings") },
+                        singleLine = true,
+                        isError = item.servingsValue == null,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Row {
+                    Text("Per serving", Modifier.weight(1.6f), style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        "Total (× ${item.servingsValue?.fmt() ?: "?"})",
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelMedium,
+                        textAlign = TextAlign.End,
+                    )
+                }
+                val t = item.totals
+                NutrientRow("Calories", "kcal", item.calories, { item.calories = it }, t.calories)
+                NutrientRow("Carbohydrate", "g", item.carbs, { item.carbs = it }, t.carbsG)
+                NutrientRow("Sugars", "g", item.sugar, { item.sugar = it }, t.sugarG)
+                NutrientRow("Sodium", "mg", item.sodium, { item.sodium = it }, t.sodiumMg)
+            }
+        }
     }
 }
 
